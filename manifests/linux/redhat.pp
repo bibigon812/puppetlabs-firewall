@@ -40,25 +40,6 @@ class firewall::linux::redhat (
     }
   }
 
-  if ($::operatingsystem != 'Amazon')
-  and (($::operatingsystem != 'Fedora' and versioncmp($::operatingsystemrelease, '7.0') >= 0)
-  or  ($::operatingsystem == 'Fedora' and versioncmp($::operatingsystemrelease, '15') >= 0)) {
-    if $ensure == 'running' {
-      exec { '/usr/bin/systemctl daemon-reload':
-        require => Package[$package_name],
-        before  => Service[$service_name],
-        unless  => "/usr/bin/systemctl is-active ${service_name}",
-      }
-    }
-  }
-
-  service { $service_name:
-    ensure    => $ensure,
-    enable    => $enable,
-    hasstatus => true,
-    require   => File["/etc/sysconfig/${service_name}"],
-  }
-
   # Redhat 7 selinux user context for /etc/sysconfig/iptables is set to unconfined_u
   case $::selinux {
     #lint:ignore:quoted_booleans
@@ -72,11 +53,32 @@ class firewall::linux::redhat (
     default:     { $seluser = undef }
   }
 
-  file { "/etc/sysconfig/${service_name}":
-    ensure  => present,
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0600',
-    seluser => $seluser,
+  any2array($service_name).each |$name| {
+    if ($::operatingsystem != 'Amazon')
+    and (($::operatingsystem != 'Fedora' and versioncmp($::operatingsystemrelease, '7.0') >= 0)
+    or  ($::operatingsystem == 'Fedora' and versioncmp($::operatingsystemrelease, '15') >= 0)) {
+      if $ensure == 'running' {
+        exec { '/usr/bin/systemctl daemon-reload':
+          require => Package[$package_name],
+          before  => Service[$name],
+          unless  => "/usr/bin/systemctl is-active ${name}",
+        }
+      }
+    }
+
+    service { $name:
+      ensure    => $ensure,
+      enable    => $enable,
+      hasstatus => true,
+      require   => File["/etc/sysconfig/${name}"],
+    }
+
+    file { "/etc/sysconfig/${name}":
+      ensure  => present,
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0600',
+      seluser => $seluser,
+    }
   }
 }
