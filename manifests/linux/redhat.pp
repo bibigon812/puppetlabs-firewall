@@ -58,7 +58,8 @@ class firewall::linux::redhat (
     and (($::operatingsystem != 'Fedora' and versioncmp($::operatingsystemrelease, '7.0') >= 0)
     or  ($::operatingsystem == 'Fedora' and versioncmp($::operatingsystemrelease, '15') >= 0)) {
       if $ensure == 'running' {
-        exec { '/usr/bin/systemctl daemon-reload':
+        exec { "/usr/bin/systemctl daemon-reload ${name}":
+          command => '/usr/bin/systemctl daemon-reload',
           require => Package[$package_name],
           before  => Service[$name],
           unless  => "/usr/bin/systemctl is-active ${name}",
